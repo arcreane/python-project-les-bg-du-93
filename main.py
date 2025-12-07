@@ -256,9 +256,10 @@ class Jeu :
         for i in range(n):
             self.j += 1
             nom, code = COULEURS_DISPO[self.j % len(COULEURS_DISPO)]
-            avion = Avion(self.ax, nom, code)
-            self.liste_avions.append(avion)
-            self.fenetre_2.listWidget.addItem(f"Avion {nom}")
+            if nom not in self.liste_avions :
+                avion = Avion(self.ax, nom, code)
+                self.liste_avions.append(avion)
+                self.fenetre_2.listWidget.addItem(f"Avion {nom}")
 
     def click(self, event):
         for avion in self.liste_avions :
@@ -269,8 +270,8 @@ class Jeu :
                 self.selection(item)
 
     def selection(self, item):
-        #Appelée quand on clique sur un avion dans la Qliste ou sur le graphique et update les labels vitesse, altitude, nom de l'avion
-        if item == "Supr" :
+        #Appelée quand on clique sur un avion dans la Qlist ou sur le graphique et update les labels vitesse, altitude, nom de l'avion
+        if item == "supr" :
             self.fenetre_2.label_1.setText("Sélectionnez un avion")
             self.fenetre_2.label_2.setText("")
             self.fenetre_2.label_3.setText("")
@@ -323,8 +324,14 @@ class Jeu :
     def update(self):
         self.update_labels()
 
-        if self.score >= 1000 :#Si le score atteint 1000 on a fini ce niveau
+        if selected_button != "TOP GUN" and self.score >= 1000 :#Si le score atteint 1000 on a fini ce niveau
             self.fin_de_jeu()
+            # A chaque tours on va verifier si on a gagné
+            if self.victory is not None:
+                self.victory.victoire()
+        elif selected_button == "TOP GUN":
+            self.fin_de_jeu()
+
 
         avion_a_supr = []
         for avion in self.liste_avions :
@@ -348,11 +355,14 @@ class Jeu :
 
                         elif avion.x > 1000 or avion.x < -1000 or avion.y > 1000 or avion.y < -1000 : #Si l'avion sort des limites du cadre
                             self.score -= 50
-                            avion_a_supr.append(avion)
+                            if avion not in avion_a_supr :
+                                avion_a_supr.append(avion)
 
                         elif avion.get_distance_to_plane(autre_avion) < 150:
                             self.plane_state = f"Danger entre {avion.name} et {autre_avion.name}"
 
+                if self.score < 0 :
+                    self.score = 0
 
                 if avion.distance_to_center() < 150 :
                     avion.peut_atterir = True
@@ -361,7 +371,6 @@ class Jeu :
 
         for avion in avion_a_supr:  # Suppression des avions
             # Déselection de l'avion
-            self.selection("Supr")
             self.fenetre_2.listWidget.clearSelection()
 
             # Suppression de l'avion dans la liste et le graphique
@@ -376,9 +385,7 @@ class Jeu :
             # On fait apparaitre un nouvel avion
             self.spawn_avions(1)
 
-        #A chaque tours on va verifier si on a gagné
-        if self.victory is not None:
-            self.victory.victoire()
+
 
         self.canvas.draw()
 
@@ -397,19 +404,12 @@ class Jeu :
 
 
 
-
-
-
-
-
-
-
 class App :
     def __init__(self):
         self.menu = Menu()
         self.jeu = Jeu()
 
-        self.jeu.vicotry = self
+        self.jeu.victory = self
         self.high_score = 0
 
         self.menu.fenetre_1.pushButton_6.clicked.connect(self.launch_level)
@@ -426,18 +426,22 @@ class App :
                 and self.jeu.victory_level_3 is True
                 and self.jeu.victory_level_4 is True):
             self.menu.fenetre_1.pushButton_5.setEnabled(True)
+
         if self.jeu.victory_level_1 is True :
             self.menu.fenetre_1.pushButton_1.setStyleSheet("QPushButton {background-color: green;}")
-            self.menu.style_button_1 = self.menu.fenetre_1.pushButton_1.styleSheet()
+            self.menu.style[0] = self.menu.fenetre_1.pushButton_1.styleSheet()
+
         if self.jeu.victory_level_2 is True :
             self.menu.fenetre_1.pushButton_2.setStyleSheet("QPushButton {background-color: green;}")
-            self.menu.style_button_2 = self.menu.fenetre_1.pushButton_1.styleSheet()
+            self.menu.style[1] = self.menu.fenetre_1.pushButton_1.styleSheet()
+
         if self.jeu.victory_level_3 is True :
             self.menu.fenetre_1.pushButton_3.setStyleSheet("QPushButton {background-color: green;}")
-            self.menu.style_button_3 = self.menu.fenetre_1.pushButton_1.styleSheet()
+            self.menu.style[2] = self.menu.fenetre_1.pushButton_1.styleSheet()
+
         if self.jeu.victory_level_4 is True :
             self.menu.fenetre_1.pushButton_4.setStyleSheet("QPushButton {background-color: green;}")
-            self.menu.style_button_4 = self.menu.fenetre_1.pushButton_1.styleSheet()
+            self.menu.style[3] = self.menu.fenetre_1.pushButton_1.styleSheet()
 
     def admin(self):
         self.jeu.victory_level_1 = True
@@ -461,13 +465,7 @@ class App :
         avion_a_supr = []
         for avion in self.jeu.liste_avions :
             avion_a_supr.append(avion)
-        for avion in avion_a_supr :#Suppression des avions
-            # Déselection de l'avion
-            self.jeu.selection("Supr")
-            self.jeu.fenetre_2.listWidget.clearSelection()
-
-            # self.compass.set_active(False)
-
+        for avion in avion_a_supr :
             # Suppression de l'avion dans la liste et le graphique
             avion.effacer()
             self.jeu.liste_avions.remove(avion)
@@ -475,6 +473,13 @@ class App :
             if len(items) > 0:
                 row = self.jeu.fenetre_2.listWidget.row(items[0])
                 self.jeu.fenetre_2.listWidget.takeItem(row)
+
+        # Déselection de l'avion
+        self.jeu.selection("supr")
+        self.jeu.fenetre_2.listWidget.clearSelection()
+
+        self.menu.fenetre_1.pushButton_6.setEnabled(False)
+        self.menu.fenetre_1.label_2.setText("Sélectionnez la difficulté :")
 
         self.jeu.score = 0
         self.jeu.nb_atterrissages = 0
